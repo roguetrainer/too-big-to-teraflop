@@ -3,7 +3,7 @@
 A simulation game exploring Hyman Minsky's Financial Instability Hypothesis through the lens of the 2025-2026 AI infrastructure boom.
 
 ---
-![Too Big to teraflop](./TB2TF.png)
+![Too Big to teraflop](./TB2TF.jpg)
 ---
 
 ## What is This?
