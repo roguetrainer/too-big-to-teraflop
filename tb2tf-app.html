@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Too Big to Teraflop</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel (to compile JSX in browser) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Prop Types (Required for Recharts UMD) -->
+    <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+
+    <!-- Recharts -->
+    <!-- Using a specific version to ensure UMD compatibility -->
+    <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
+
+    <style>
+        /* Custom scrollbar for the log */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0f172a; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155; 
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #475569; 
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // --- Imports Setup for Browser ---
+        const { useState, useEffect, useMemo, useRef } = React;
+        const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } = Recharts;
+
+        // --- Icons (Inlined for standalone HTML) ---
+        const IconBase = ({ children, color, size = 20 }) => (
+            <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width={size} 
+                height={size} 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke={color || "currentColor"} 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+            >
+                {children}
+            </svg>
+        );
+
+        const Activity = (props) => <IconBase {...props}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></IconBase>;
+        const Cpu = (props) => <IconBase {...props}><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></IconBase>;
+        const Server = (props) => <IconBase {...props}><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></IconBase>;
+        const Brain = (props) => <IconBase {...props}><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"></path><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"></path></IconBase>;
+        const Zap = (props) => <IconBase {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></IconBase>;
+        const Radio = (props) => <IconBase {...props}><circle cx="12" cy="12" r="2"></circle><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path></IconBase>;
+
+        // --- Game Constants ---
+        const TOTAL_QUARTERS = 20; // 5 Years
+        const INITIAL_CASH = 10000;
+        const MOMENTUM_SENSITIVITY = 1.2; // How hard speculators chase trends
+        const VALUE_SENSITIVITY = 0.8; // How hard fundamentalists punish overvaluation
+        const PRICE_ELASTICITY = 0.15; // How much price moves per unit of excess demand
+
+        // Asset Definitions with visual themes
+        const ASSETS = [
+            { id: 'gpu', name: 'NanoChip (GPU)', icon: Cpu, color: '#8884d8' },
+            { id: 'data', name: 'MegaData REIT', icon: Server, color: '#82ca9d' },
+            { id: 'model', name: 'GPT-X Inc.', icon: Brain, color: '#ffc658' },
+            { id: 'grid', name: 'PowerGrid AI', icon: Zap, color: '#ff7300' },
+            { id: 'robot', name: 'RoboWork', icon: Radio, color: '#0088fe' },
+        ];
+
+        const Game = () => {
+            // --- State ---
+            const [gameState, setGameState] = useState('start'); // start, playing, ended
+            const [quarter, setQuarter] = useState(0);
+            const [cash, setCash] = useState(INITIAL_CASH);
+            const [portfolio, setPortfolio] = useState({}); // { assetId: quantity }
+            const [stocks, setStocks] = useState([]);
+            const [history, setHistory] = useState([]); // For charting
+            const [logs, setLogs] = useState([]);
+            const [marketPhase, setMarketPhase] = useState('Displacement'); // Minsky phases
+
+            // Refs for scrolling logs
+            const logsEndRef = useRef(null);
+
+            // --- Helpers ---
+            // Simple Box-Muller transform for standard normal distribution
+            const getNormalRandom = () => {
+                let u = 0, v = 0;
+                while(u === 0) u = Math.random(); 
+                while(v === 0) v = Math.random();
+                return Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
+            };
+
+            // Log-normal generator: mu is expected log-mean, sigma is log-std-dev
+            const getLogNormal = (mu, sigma) => {
+                return Math.exp(mu + sigma * getNormalRandom());
+            };
+
+            // --- Initialization ---
+            const startGame = () => {
+                const initialStocks = ASSETS.map(asset => {
+                // Determine hidden quality (Terminal Value) & Type
+                const rand = Math.random();
+                let terminalQuality;
+                let type;
+
+                // 20% Chance of Fraud (Aggressive Fail), 40% Mediocre, 40% Growth
+                if (rand < 0.2) {
+                    type = 'Fraud';
+                    terminalQuality = 0; 
+                } else if (rand < 0.6) {
+                    type = 'Mediocre';
+                    terminalQuality = Math.random() * 30 + 10; 
+                } else {
+                    type = 'Growth';
+                    terminalQuality = Math.random() * 60 + 40; 
+                }
+
+                // Initial Price: Log-Normal distribution
+                // Center around ~45 (ln(45) approx 3.8), with some variance
+                const startPrice = getLogNormal(3.8, 0.4); 
+                
+                return {
+                    ...asset,
+                    price: startPrice,
+                    trueValue: 20, // Starting fundamental value
+                    terminalQuality,
+                    type, // Hidden from player
+                    earnings: 2, // Initial earnings
+                    momentumScore: 0,
+                    sentiment: 'Neutral',
+                    sharesOutstanding: 10000,
+                    isBankrupt: false
+                };
+                });
+
+                setStocks(initialStocks);
+                setPortfolio(ASSETS.reduce((acc, a) => ({ ...acc, [a.id]: 0 }), {}));
+                setCash(INITIAL_CASH);
+                setQuarter(0);
+                setHistory([{ quarter: 0, ...initialStocks.reduce((acc, s) => ({...acc, [s.id]: s.price}), {}) }]);
+                setLogs([{ turn: 0, msg: "The AI Bubble has begun. Analysts predict massive growth." }]);
+                setGameState('playing');
+                setMarketPhase('Displacement');
+            };
+
+            // --- Core Game Loop (Next Quarter) ---
+            const nextQuarter = () => {
+                if (quarter >= TOTAL_QUARTERS) {
+                endGame();
+                return;
+                }
+
+                let newStocks = [...stocks];
+                let newHistory = { quarter: quarter + 1 };
+                let logMessages = [];
+                let phase = marketPhase;
+
+                // 1. Calculate Phase based on Market Heat
+                const totalMarketCap = newStocks.reduce((sum, s) => sum + s.price, 0);
+                const avgPE = newStocks.reduce((sum, s) => sum + (s.price / Math.max(0.1, s.earnings)), 0) / newStocks.length;
+                
+                if (quarter < 4) phase = 'Displacement';
+                else if (avgPE > 40 && quarter < 12) phase = 'Euphoria';
+                else if (quarter > 12 && avgPE > 20) phase = 'Distress';
+                else if (quarter > 15) phase = 'Panic/Revulsion';
+                
+                setMarketPhase(phase);
+
+                // 2. Process each stock
+                newStocks = newStocks.map(stock => {
+                if (stock.isBankrupt) {
+                    newHistory[stock.id] = 0;
+                    return stock;
+                }
+
+                // --- A. Generate Earnings (Signal + Noise) ---
+                let fundamentalTrend;
+                
+                if (stock.type === 'Fraud') {
+                    // Fraud Logic: Fake amazing growth early (cook the books), then collapse
+                    if (quarter < 5) {
+                    fundamentalTrend = 20 + (quarter * 5); // Looks like a super-growth stock!
+                    } else {
+                    // The Rug Pull: earnings plummet exponentially
+                    fundamentalTrend = Math.max(0, 45 - ((quarter - 4) * 15)); 
+                    }
+                } else {
+                    // Standard Logic for honest stocks
+                    const progress = (quarter + 1) / TOTAL_QUARTERS;
+                    fundamentalTrend = 20 + (stock.terminalQuality - 20) * progress;
+                }
+                
+                // Noise: Log-normal multiplier to ensure positive earnings
+                // Volatility increases in Euphoria/Panic phases
+                const volatility = phase === 'Euphoria' ? 0.4 : 0.2;
+                const earningsNoise = getLogNormal(0, volatility); // Mean 0 in log space = median 1 multiplier
+                
+                let newEarnings = fundamentalTrend * earningsNoise;
+                
+                // --- B. Agent Demand Calculation ---
+                
+                // 1. Value Traders (The Skeptics)
+                // They look at P/E ratio. Fair P/E is assumed to be ~20.
+                const peRatio = stock.price / newEarnings;
+                const valueDemand = (20 - peRatio) * VALUE_SENSITIVITY; 
+
+                // 2. Momentum Traders (The Herd)
+                // They look at previous price action.
+                // If price rose last turn, they buy.
+                const prevPrice = history[history.length - 1][stock.id];
+                const priceChangePct = (stock.price - prevPrice) / prevPrice;
+                
+                // Momentum builds up. If it rose a lot, they go crazy.
+                let momentumDemand = priceChangePct * 100 * MOMENTUM_SENSITIVITY;
+                if (phase === 'Euphoria') momentumDemand *= 1.5; 
+                if (phase === 'Panic/Revulsion' && priceChangePct < 0) momentumDemand *= 2.0; // Panic selling
+
+                // 3. Net Demand & Price Impact
+                const totalDemand = valueDemand + momentumDemand;
+                
+                // Deterministic price move based on agents
+                let deterministicPrice = stock.price * (1 + (totalDemand * PRICE_ELASTICITY / 100));
+                
+                // 4. Add Market Randomness (Log-Normal Price Shock)
+                // This ensures prices are "jagged" and not perfectly smooth curves
+                const priceVolatility = 0.05; // 5% standard deviation per quarter
+                const marketShock = getLogNormal(0, priceVolatility);
+                
+                let newPrice = deterministicPrice * marketShock;
+
+                // Check for Bankruptcy
+                let isBankrupt = false;
+                // FRAUD stocks can fail as early as Q6. Others usually later.
+                if (newPrice < 1 || (quarter > 5 && newEarnings < 0.5)) {
+                    newPrice = 0;
+                    isBankrupt = true;
+                    logMessages.push(`💀 ${stock.name} has filed for bankruptcy!`);
+                }
+
+                newHistory[stock.id] = newPrice;
+
+                return {
+                    ...stock,
+                    price: newPrice,
+                    earnings: newEarnings,
+                    trueValue: fundamentalTrend,
+                    isBankrupt,
+                    sentiment: totalDemand > 5 ? 'Bullish' : totalDemand < -5 ? 'Bearish' : 'Neutral'
+                };
+                });
+
+                setStocks(newStocks);
+                setHistory([...history, newHistory]);
+                setQuarter(quarter + 1);
+                
+                if (logMessages.length > 0) {
+                setLogs(prev => [...prev, ...logMessages.map(msg => ({ turn: quarter + 1, msg }))]);
+                } else if ((quarter + 1) % 4 === 0) {
+                setLogs(prev => [...prev, { turn: quarter + 1, msg: `Year ${(quarter+1)/4} complete. Phase: ${phase}` }]);
+                }
+            };
+
+            const endGame = () => {
+                setGameState('ended');
+                // Liquidate everything
+                let finalCash = cash;
+                stocks.forEach(s => {
+                finalCash += (portfolio[s.id] || 0) * s.price;
+                });
+                setCash(finalCash);
+            };
+
+            // --- Player Actions ---
+            const buyStock = (assetId) => {
+                if (gameState !== 'playing') return;
+                const stock = stocks.find(s => s.id === assetId);
+                if (stock.isBankrupt) return;
+
+                // Buy 10 shares or max affordable
+                const cost = stock.price * 10;
+                if (cash >= cost) {
+                setCash(cash - cost);
+                setPortfolio(prev => ({ ...prev, [assetId]: (prev[assetId] || 0) + 10 }));
+                }
+            };
+
+            const sellStock = (assetId) => {
+                if (gameState !== 'playing') return;
+                const stock = stocks.find(s => s.id === assetId);
+                
+                // Sell 10 shares or max owned
+                const currentQty = portfolio[assetId] || 0;
+                if (currentQty >= 10) {
+                setCash(cash + stock.price * 10);
+                setPortfolio(prev => ({ ...prev, [assetId]: currentQty - 10 }));
+                }
+            };
+
+            const calculateTotalEquity = () => {
+                let equity = cash;
+                stocks.forEach(s => {
+                equity += (portfolio[s.id] || 0) * s.price;
+                });
+                return equity;
+            };
+
+            // Auto-scroll logs
+            useEffect(() => {
+                logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, [logs]);
+
+
+            // --- Render ---
+
+            if (gameState === 'start') {
+                return (
+                <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white p-6">
+                    <h1 className="text-5xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">
+                    Too Big to Teraflop
+                    </h1>
+                    <h2 className="text-xl mb-8 text-slate-400">Artificial Exuberance: A Simulation of Greed, Fear, and GPUs</h2>
+                    <div className="max-w-md text-center space-y-4 mb-8">
+                    <p>You are a trader in the midst of the great AI Bubble.</p>
+                    <p>
+                        The market is composed of <span className="text-green-400">Value Investors</span> (who look at earnings) and 
+                        <span className="text-pink-400"> Momentum Chasers</span> (who follow the herd).
+                    </p>
+                    <p>
+                        Some stocks are the future. Others are <span className="text-red-400 font-bold">Total Frauds</span>. 
+                        Can you ride the wave and get out before the <strong>Minsky Moment</strong>?
+                    </p>
+                    </div>
+                    <button 
+                    onClick={startGame}
+                    className="px-8 py-3 bg-blue-600 hover:bg-blue-500 rounded-full font-bold text-lg shadow-lg transition-all transform hover:scale-105"
+                    >
+                    Enter the Market
+                    </button>
+                </div>
+                );
+            }
+
+            if (gameState === 'ended') {
+                return (
+                <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white p-6">
+                    <h1 className="text-4xl font-bold mb-6">Market Closed</h1>
+                    <div className="bg-slate-800 p-8 rounded-xl border border-slate-700 text-center">
+                    <p className="text-slate-400 mb-2">Final Portfolio Value</p>
+                    <p className="text-5xl font-mono text-green-400 mb-6">
+                        ${cash.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </p>
+                    <p className="mb-4">
+                        Starting Capital: $10,000 <br/>
+                        Return: {((cash - 10000)/100).toFixed(1)}%
+                    </p>
+                    <div className="text-left bg-slate-900 p-4 rounded mb-6 text-sm">
+                        <p className="font-bold mb-2">The Truth Revealed:</p>
+                        {stocks.map(s => (
+                        <div key={s.id} className="flex justify-between mb-1 border-b border-slate-800 pb-1">
+                            <span>{s.name}</span>
+                            <span className={s.type === 'Fraud' ? "text-red-500 font-bold" : s.type === 'Growth' ? "text-green-400" : "text-yellow-400"}>
+                            {s.type} {s.type === 'Fraud' ? "(SCAM)" : ""} {s.isBankrupt ? " [BUST]" : ""}
+                            </span>
+                        </div>
+                        ))}
+                    </div>
+                    <button 
+                        onClick={() => window.location.reload()}
+                        className="px-6 py-2 bg-slate-600 hover:bg-slate-500 rounded text-white"
+                    >
+                        Play Again
+                    </button>
+                    </div>
+                </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-slate-950 text-slate-100 p-4 font-sans">
+                {/* Header */}
+                <header className="flex justify-between items-center bg-slate-900 p-4 rounded-xl border border-slate-800 mb-4 shadow-lg">
+                    <div>
+                    <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                        Too Big to Terraflop
+                    </h1>
+                    <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
+                        <span className={`px-2 py-0.5 rounded-full ${
+                        marketPhase === 'Displacement' ? 'bg-blue-900 text-blue-200' :
+                        marketPhase === 'Euphoria' ? 'bg-green-900 text-green-200' :
+                        marketPhase === 'Distress' ? 'bg-orange-900 text-orange-200' :
+                        'bg-red-900 text-red-200'
+                        }`}>
+                        Phase: {marketPhase}
+                        </span>
+                        <span>Quarter: {quarter} / {TOTAL_QUARTERS}</span>
+                    </div>
+                    </div>
+                    <div className="text-right">
+                    <div className="text-xs text-slate-400">Total Equity</div>
+                    <div className="text-2xl font-mono text-white">
+                        ${calculateTotalEquity().toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </div>
+                    <div className="text-xs text-slate-500">Cash: ${cash.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                    </div>
+                    <button 
+                    onClick={nextQuarter}
+                    className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-lg font-bold shadow-lg active:scale-95 transition-all"
+                    >
+                    Next Quarter &rarr;
+                    </button>
+                </header>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    
+                    {/* Main Chart Area */}
+                    <div className="lg:col-span-2 space-y-4">
+                    <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 h-96">
+                        <h3 className="text-sm font-semibold text-slate-400 mb-4 flex items-center gap-2">
+                        <Activity size={16} /> Market Price History
+                        </h3>
+                        <ResponsiveContainer width="100%" height="90%">
+                        <LineChart data={history}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                            <XAxis dataKey="quarter" stroke="#94a3b8" fontSize={12} />
+                            <YAxis stroke="#94a3b8" fontSize={12} />
+                            <Tooltip 
+                            contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155' }}
+                            itemStyle={{ fontSize: '12px' }}
+                            />
+                            <Legend />
+                            {ASSETS.map(asset => (
+                            <Line 
+                                key={asset.id}
+                                type="monotone" 
+                                dataKey={asset.id} 
+                                stroke={asset.color} 
+                                strokeWidth={2}
+                                dot={false}
+                                name={asset.name}
+                            />
+                            ))}
+                        </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+
+                    {/* Asset Trading Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {stocks.map(stock => {
+                        const AssetIcon = stock.icon;
+                        return (
+                            <div key={stock.id} className={`bg-slate-900 p-4 rounded-xl border ${stock.isBankrupt ? 'border-red-900 opacity-60' : 'border-slate-800'} transition-all hover:border-slate-700`}>
+                            <div className="flex justify-between items-start mb-3">
+                                <div className="flex items-center gap-3">
+                                <div className="p-2 bg-slate-800 rounded-lg">
+                                    <AssetIcon size={20} style={{ color: stock.color }} />
+                                </div>
+                                <div>
+                                    <div className="font-bold">{stock.name}</div>
+                                    <div className="text-xs text-slate-400 flex gap-2">
+                                    <span>Held: {portfolio[stock.id] || 0}</span>
+                                    {stock.isBankrupt && <span className="text-red-500 font-bold">BANKRUPT</span>}
+                                    </div>
+                                </div>
+                                </div>
+                                <div className="text-right">
+                                <div className="font-mono text-xl">${stock.price.toFixed(1)}</div>
+                                <div className={`text-xs ${stock.sentiment === 'Bullish' ? 'text-green-400' : stock.sentiment === 'Bearish' ? 'text-red-400' : 'text-slate-500'}`}>
+                                    {stock.sentiment} Sentiment
+                                </div>
+                                </div>
+                            </div>
+
+                            {/* Stats Grid */}
+                            <div className="grid grid-cols-2 gap-2 mb-4 text-xs bg-slate-950 p-2 rounded">
+                                <div>
+                                <span className="text-slate-500">Earnings:</span> 
+                                <span className="ml-1 text-slate-200">${stock.earnings.toFixed(2)}</span>
+                                </div>
+                                <div>
+                                <span className="text-slate-500">P/E Ratio:</span> 
+                                <span className={`ml-1 ${(stock.price/stock.earnings) > 50 ? 'text-red-400' : 'text-slate-200'}`}>
+                                    {(stock.price / Math.max(0.1, stock.earnings)).toFixed(1)}x
+                                </span>
+                                </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="grid grid-cols-2 gap-2">
+                                <button 
+                                onClick={() => buyStock(stock.id)}
+                                disabled={stock.isBankrupt || cash < stock.price * 10}
+                                className="bg-green-900/50 hover:bg-green-800 text-green-200 py-1.5 rounded text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed"
+                                >
+                                Buy 10
+                                </button>
+                                <button 
+                                onClick={() => sellStock(stock.id)}
+                                disabled={(portfolio[stock.id] || 0) < 10}
+                                className="bg-red-900/50 hover:bg-red-800 text-red-200 py-1.5 rounded text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed"
+                                >
+                                Sell 10
+                                </button>
+                            </div>
+                            </div>
+                        );
+                        })}
+                    </div>
+                    </div>
+
+                    {/* Sidebar Info */}
+                    <div className="space-y-4">
+                    {/* News Feed */}
+                    <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 h-64 flex flex-col">
+                        <h3 className="text-sm font-semibold text-slate-400 mb-2 border-b border-slate-700 pb-2">Market News & Analysis</h3>
+                        <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar text-sm">
+                        {logs.length === 0 && <div className="text-slate-600 italic">Market opens soon...</div>}
+                        {logs.map((log, i) => (
+                            <div key={i} className="text-slate-300">
+                            <span className="text-slate-500 text-xs font-mono mr-2">[Q{log.turn}]</span>
+                            {log.msg}
+                            </div>
+                        ))}
+                        <div ref={logsEndRef} />
+                        </div>
+                    </div>
+
+                    {/* Tutorial / Minsky Theory */}
+                    <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 text-xs leading-relaxed text-slate-300">
+                        <h4 className="font-bold text-white mb-2 text-sm">Minsky's Hypothesis</h4>
+                        <p className="mb-2">
+                        <strong className="text-blue-300">1. Displacement:</strong> Investors get excited about a new paradigm (AI).
+                        </p>
+                        <p className="mb-2">
+                        <strong className="text-green-300">2. Boom:</strong> Prices rise. Value investors buy based on fundamentals.
+                        </p>
+                        <p className="mb-2">
+                        <strong className="text-yellow-300">3. Euphoria:</strong> Momentum traders chase the trend. Prices detach from earnings. P/E ratios skyrocket.
+                        </p>
+                        <p className="mb-2">
+                        <strong className="text-red-300">4. Distress/Panic:</strong> Earnings disappoint. The bubble pops. "Ponzi" stocks go to zero.
+                        </p>
+                    </div>
+                    </div>
+
+                </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<Game />);
+    </script>
+</body>
+</html>
