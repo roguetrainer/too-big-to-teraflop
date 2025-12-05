@@ -1,14 +1,14 @@
 # **Too Big to Teraflop: Minsky, Math, and the AI Bubble**
 
-This document outlines the theoretical foundations of the simulation game "Too Big to teraflop," explaining the economic theories of Hyman Minsky, the mathematical models used to gamify them, and the parallels to the 2025-2026 AI infrastructure boom.
+This document outlines the theoretical foundations of the simulation game "Too Big to Teraflop," explaining the economic theories of Hyman Minsky, the mathematical models used to gamify them, and the parallels to the 2025-2026 AI infrastructure boom.
 
 ---
-![Too Big to teraflop](TB2TF.jpg)
+![Too Big to Teraflop](TB2TF.jpg)
 ---
 
 ## **A Note on the Title**
 
-The title **"Too Big to teraflop"** is a satirical play on the economic doctrine of **"Too Big to Fail."**
+The title **"Too Big to Teraflop"** is a satirical play on the economic doctrine of **"Too Big to Fail."**
 
 * **Original Concept:** "Too Big to Fail" refers to financial institutions (like massive banks) that are so deeply interconnected with the economy that their failure would trigger a systemic collapse. Consequently, governments and central banks are forced to bail them out, even if they are insolvent.  
 * **The AI Twist:** In the context of 2025, the AI infrastructure build-out involves such astronomical sums of capital (trillions in data centers, chips, and energy) that it has become systemically critical.  
