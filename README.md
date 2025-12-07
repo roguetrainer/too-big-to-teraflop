@@ -3,7 +3,7 @@
 A simulation game exploring Hyman Minsky's Financial Instability Hypothesis through the lens of the 2025-2026 AI infrastructure boom.
 
 ---
-![Too Big to teraflop](./TB2TF.jpg)
+![Too Big to teraflop](./img/TB2TF.jpg)
 ---
 
 ## What is This?
@@ -19,7 +19,7 @@ Side-by-side comparison: [Silicon Subprime vs Too Big to Teraflop](https://githu
 
 The easiest way to play is with the HTML version:
 
-1. **Download** [tb2tf-app.html](tb2tf-app.html) to your local drive
+1. **Download** [tb2tf-app.html](./game/tb2tf-app.html) to your local drive
 2. **Double-click** the file to open it in your browser
 3. **Start playing!** No installation required.
 
@@ -31,9 +31,9 @@ The HTML file uses CDNs (Content Delivery Networks) to load required libraries f
 
 This repository contains multiple versions of the game:
 
-- **[tb2tf-app.html](tb2tf-app.html)** - Standalone HTML version, ready to play immediately
-- **[tb2tf-app.jsx](tb2tf-app.jsx)** - React source file (JSX = JavaScript XML) with the same game logic
-- **[minsky_ai_bubble_overview.md](minsky_ai_bubble_overview.md)** - Detailed explanation of the economic theory and mathematical models behind the game
+- **[tb2tf-app.html](./game/tb2tf-app.html)** - Standalone HTML version, ready to play immediately
+- **[tb2tf-app.jsx](./game/tb2tf-app.jsx)** - React source file (JSX = JavaScript XML) with the same game logic
+- **[minsky_ai_bubble_overview.md](./docs/minsky_ai_bubble_overview.md)** - Detailed explanation of the economic theory and mathematical models behind the game
 
 ### HTML vs JSX
 
@@ -48,7 +48,7 @@ While the game is fully functional, GitHub Pages hosting is not yet configured. 
 
 The game is based on **Hyman Minsky's Financial Instability Hypothesis**, which argues that financial systems are inherently unstable because periods of stability encourage excessive risk-taking.
 
-Read the full theory breakdown in [minsky_ai_bubble_overview.md](minsky_ai_bubble_overview.md), which covers:
+Read the full theory breakdown in [minsky_ai_bubble_overview.md](./docs/minsky_ai_bubble_overview.md), which covers:
 
 - The three types of finance: Hedge, Speculative, and Ponzi
 - The five stages of a Minsky bubble
@@ -61,7 +61,7 @@ If you want to work with the React/JSX source code:
 
 1. **Install Node.js** (if not already installed)
 2. **Set up a React development environment** (e.g., Create React App, Vite, etc.)
-3. **Copy the JSX code** from [tb2tf-app.jsx](tb2tf-app.jsx) into your React project
+3. **Copy the JSX code** from [tb2tf-app.jsx](./game/tb2tf-app.jsx) into your React project
 4. **Install dependencies:**
    ```bash
    npm install react recharts
