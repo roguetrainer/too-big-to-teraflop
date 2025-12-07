@@ -12,8 +12,8 @@ A simulation game exploring Hyman Minsky's Financial Instability Hypothesis thro
 
 The game demonstrates why stability breeds instability, and how even transformative technologies like AI can fuel speculative bubbles that eventually crash.
 
-For games in a sister repo that explore the four letters "L" of systemic risk: loss, leverage, liquidty & linkages, see:
-[silicon-subprime](https://github.com/roguetrainer/silicon-subprime). How they relate is described here: [Silicon Subprime vs Too Big to Teraflop](https://github.com/roguetrainer/systemic-risk/blob/main/docs/silicon-subprime-vs-too-big-to-tflop.md)
+See the sister repo [silicon-subprime](https://github.com/roguetrainer/silicon-subprime) for games which explore the four letters "L" of systemic risk: loss, leverage, liquidty & linkages.
+Side-by-side comparison: [Silicon Subprime vs Too Big to Teraflop](https://github.com/roguetrainer/systemic-risk/blob/main/docs/silicon-subprime-vs-too-big-to-tflop.md)
 
 ## Quick Start (Play Now!)
 
