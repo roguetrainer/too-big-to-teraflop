@@ -12,6 +12,9 @@ A simulation game exploring Hyman Minsky's Financial Instability Hypothesis thro
 
 The game demonstrates why stability breeds instability, and how even transformative technologies like AI can fuel speculative bubbles that eventually crash.
 
+For games in a sister repo that explore the four letters "L" of systemic risk: loss, leverage, liquidty & linkages, see:
+[silicon-subprime](https://github.com/roguetrainer/silicon-subprime). How they relate is described here: [Silicon Subprime vs Too Big to Teraflop](https://github.com/roguetrainer/systemic-risk/blob/main/docs/silicon-subprime-vs-too-big-to-tflop.md)
+
 ## Quick Start (Play Now!)
 
 The easiest way to play is with the HTML version:
@@ -87,4 +90,4 @@ Created to illustrate economic theory through interactive simulation. Inspired b
 
 ### 🧭 Navigation
 [systemic-risk](https://github.com/roguetrainer/systemic-risk) | [systemic-risk-intro](https://github.com/roguetrainer/systemic-risk-intro) | [systemic-risk-metrics](https://github.com/roguetrainer/systemic-risk-metrics) | [silicon-subprime](https://github.com/roguetrainer/silicon-subprime) | [too-big-to-teraflop](https://github.com/roguetrainer/too-big-to-teraflop) | [systemic-risk/docs/](https://github.com/roguetrainer/systemic-risk/blob/main/docs/) {
- [systemic-risk-overview](https://github.com/roguetrainer/systemic-risk/blob/main/docs/systemic-risk-overview.md) | [gpu-financial-complex](https://github.com/roguetrainer/systemic-risk/blob/main/docs/gpu-financial-complex)}
+ [systemic-risk-overview](https://github.com/roguetrainer/systemic-risk/blob/main/docs/systemic-risk-overview.md) | [gpu-financial-complex](https://github.com/roguetrainer/systemic-risk/blob/main/docs/gpu-financial-complex.md)}
